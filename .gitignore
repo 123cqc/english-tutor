@@ -1,1 +1,4 @@
+ai_tutor_history.json
 history.json
+__pycache__/
+*.pyc
