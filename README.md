@@ -21,6 +21,7 @@
 ### 1. 安装依赖
 ```bash
 pip3 install --user "openai==0.28"
+```
 
 ## RAG 知识库问答（新增）
 
@@ -47,6 +48,7 @@ python3 rag_step2.py
 
 # 第二步：问答
 python3 rag_step4.py
+```
 
 ## Docker 部署（新增）
 
@@ -55,6 +57,7 @@ python3 rag_step4.py
 ### 1. 构建镜像
 ```bash
 docker build -t rag-api:v1 .
+```
 
 ## AI Agent 工具调用（新增）
 
