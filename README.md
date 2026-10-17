@@ -47,3 +47,11 @@ python3 rag_step2.py
 
 # 第二步：问答
 python3 rag_step4.py
+
+## Docker 部署（新增）
+
+本项目已容器化，无需配置本地环境，一键运行。
+
+### 1. 构建镜像
+```bash
+docker build -t rag-api:v1 .

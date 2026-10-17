@@ -13,7 +13,8 @@ openai.api_base = "https://dashscope.aliyuncs.com/compatible-mode/v1"
 #创建FastAPI应用
 app = FastAPI()
 #连接ChromaDB(启动是执行一次)
-client = chromadb.PersistentClient(path="/home/qiancheng/english-tutor/chroma_db")
+# 使用相对路径，兼容宿主机和 Docker 容器
+client = chromadb.PersistentClient(path="./chroma_db")
 collection = client.get_collection(name ="python_notes")
 #定义请求体模型
 class Question(BaseModel):

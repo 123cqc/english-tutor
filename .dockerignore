@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+.git/
+.gitignore
+ai_tutor_history.json
+history.json
+api_demo.py
+rag_step1.py
+rag_step2.py
+rag_step3.py
+rag_step4.py
+ai_tutor.py
