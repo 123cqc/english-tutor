@@ -55,3 +55,15 @@ python3 rag_step4.py
 ### 1. 构建镜像
 ```bash
 docker build -t rag-api:v1 .
+
+## AI Agent 工具调用（新增）
+
+基于 Function Calling 实现的智能运维 Agent。用户输入问题后，大模型会自动判断是否需要调用本地工具（如查询服务器 CPU/内存），并基于工具返回结果生成回答。
+
+### 核心文件
+- `agent_tools.py`：定义了本地工具函数（如 `get_server_status`）
+- `agent_demo.py`：Agent 核心逻辑，包括工具说明书定义、大模型调用、本地函数执行和结果二次总结
+
+### 运行方式
+```bash
+python3 agent_demo.py
