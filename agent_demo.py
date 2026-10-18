@@ -1,10 +1,13 @@
 import os
 import json
 import dashscope
+import time
 from agent_tools import get_server_status
 
 # 从环境变量读取 Key
 dashscope.api_key = os.environ.get("DASHSCOPE_API_KEY")
+
+start = time.time()
 
 # 1. 定义“工具说明书”
 # 告诉大模型，我们有一个叫 get_server_status 的工具
@@ -45,13 +48,17 @@ if message.get("tool_calls"):
     
     print(f"大模型决定调用工具: {function_name}")
     
-    # 5. 本地执行工具函数
+       # 5. 本地执行工具函数 (加上异常处理)
     if function_name == "get_server_status":
-        result = get_server_status()
-        print(f"工具执行结果: {result}")
+        try:
+            result = get_server_status()
+            print(f"工具执行结果: {result}")
+        except Exception as e:
+            # 如果工具挂了（比如服务器宕机、psutil报错）
+            result = f"工具执行失败，错误信息: {str(e)}"
+            print(result)
         
-        # 6. 把工具执行的结果，作为一条新消息发给大模型
-        # 这里要注意把 assistant 的原始消息和 tool 的结果都加入历史
+        # 6. 把工具执行的结果（或者是报错信息），作为一条新消息发给大模型
         messages.append(message) 
         messages.append({
             "role": "tool",
@@ -73,3 +80,5 @@ else:
     # 如果大模型没调用工具，直接回答了
     print("\n=== 直接回答 ===")
     print(message.get("content"))
+
+print(f"总耗时: {time.time() - start:.2f} 秒")

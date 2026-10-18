@@ -8,7 +8,7 @@ dashscope.api_key = os.environ.get("DASHSCOPE_API_KEY")
 #1.连接已有的ChrromaDB
 client = chromadb.PersistentClient(path="/home/qiancheng/english-tutor/chroma_db")
 #获取之前创建的集合
-collection = client.get_collection(name="python_notes")
+collection = client.get_collection(name="multi_docs")
 #2.输入问题
 question = input("请输入你的问题:")
 #3.把问题转成向量
