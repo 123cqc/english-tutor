@@ -70,3 +70,17 @@ docker build -t rag-api:v1 .
 ### 运行方式
 ```bash
 python3 agent_demo.py
+```
+
+# AI 智能助手 (RAG + Agent)
+
+## 📺 在线演示 (Demo)
+![前端界面演示](assets/4e39d8bb2c42e196427e373c601dd358.png)
+![Agent 运维助手演示](assets/2026-10-19 08-57-21.mp4)
+
+
+## 项目简介
+本项目包含两个核心模块：
+1. **企业级 RAG 知识库问答**：结合 Streamlit 前端，通过私有文档检索增强大模型回答，有效解决幻觉问题。
+2. **智能运维 Agent**：基于 Function Calling 实现工具调度，Agent 可根据提问自动执行本地 Python 脚本。
+...
