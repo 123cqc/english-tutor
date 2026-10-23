@@ -84,3 +84,5 @@ python3 agent_demo.py
 1. **企业级 RAG 知识库问答**：结合 Streamlit 前端，通过私有文档检索增强大模型回答，有效解决幻觉问题。
 2. **智能运维 Agent**：基于 Function Calling 实现工具调度，Agent 可根据提问自动执行本地 Python 脚本。
 ...
+
+已接入 MySQL 数据库实现聊天记录持久化

@@ -1,3 +1,14 @@
+import pymysql
+#写一个获取数据库连接的函数
+def get_db_connection():
+    return pymysql.connect(
+        host='host.docker.internal',
+        port=3306,
+        user='root',
+        password='root123',
+        database='ai_chat_db',
+        charset='utf8mb4'
+    )
 # 导入 FastAPI 和请求体模型
 from fastapi import FastAPI
 from pydantic import BaseModel
@@ -62,10 +73,25 @@ def ask_rag(question: str) -> str:
                 {"role": "user", "content": prompt}
             ]
         )
-        return response.choices[0].message.content
+        #前面调用大模型拿到response
+        answer_text = response.choices[0].message.content
+        
+        try:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            # 修复：user_id 后面没点，逗号别漏
+            cursor.execute("INSERT INTO chat_messages (user_id, role, content) VALUES (%s, %s, %s)", (1, 'user', question))
+            cursor.execute("INSERT INTO chat_messages (user_id, role, content) VALUES (%s, %s, %s)", (1, 'assistant', answer_text))
+            conn.commit()
+            cursor.close()
+            conn.close()
+        except Exception as e:
+            print(f"存数据失败:{e}")
+
+        return answer_text
 
     except Exception as e:
-        print(f"内部报错: {e}") # 打印真实错误
+        print(f"内部报错: {e}") 
         return f"系统内部错误: {str(e)}"
 
 # 定义 POST 接口
