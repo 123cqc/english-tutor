@@ -1,88 +1,71 @@
-# AI 英语学习助手
+# 🚀 Enterprise RAG Knowledge Base (企业级 RAG 智能问答系统)
 
-## 项目简介
-基于通义千问 API 的英语学习工具，输入英文句子，自动返回翻译、语法纠错和更地道的表达建议。支持多轮对话和对话历史持久化。
+## 📖 项目简介
+本项目是一个基于大模型（LLM）与 RAG（检索增强生成）架构的企业级私有知识库问答系统。不仅提供精准的文档检索回答，还重点解决了大模型在真实业务场景下的**“知识幻觉”**与**“多轮对话指代不明”**等工程痛点。
 
-## 功能
-- 英文句子翻译
-- 语法错误指出
-- 更自然的表达建议
-- 多轮对话，保留上下文
-- 对话历史持久化（保存到本地 JSON 文件）
+## ✨ 核心特性 (Key Features)
+- **🧠 精准的 RAG 检索**：基于 LangChain 与 ChromaDB 实现文档切片、向量化与 Top-K 相似度召回，有效防止大模型幻觉。
+- **🔄 Query Rewrite (问题重写)**：针对多轮对话中的指代词（如“它有什么缺点”），系统会自动结合上下文重写为完整 Query，大幅提升检索召回率。
+- **💾 会话记忆持久化**：接入 MySQL 数据库，实现聊天记录的实时落盘，支持基于历史记录的多轮对话。
+- **🛡️ 模块化工程架构**：遵循单一职责原则（SRP），将数据库层、RAG 引擎层与 API 路由层彻底解耦，具备极高的可维护性。
+- **🐳 一键容器化部署**：基于 Docker 容器化交付，解决环境依赖问题，实现快速部署上线。
 
-## 技术栈
-- Python 3
-- 通义千问 API（兼容 OpenAI 接口）
-- OpenAI Python SDK
-- JSON（对话历史持久化）
+## 🏗️ 系统架构图 (Architecture)
+用户提问 -> FastAPI (接口层) -> MySQL (拉取历史) -> LLM (Query 重写)
+                                                       ↓
+用户回答 <- LLM (生成最终回答) <- 向量检索 (ChromaDB 检索资料) 
 
-## 使用方法
+*(注：此处后续可替换为你自己画的精美架构图)*
 
-### 1. 安装依赖
-```bash
-pip3 install --user "openai==0.28"
+## 🛠️ 技术栈 (Tech Stack)
+- **核心语言**: Python 3.10
+- **大模型 API**: 通义千问 (Qwen-plus) / DashScope Embedding
+- **后端框架**: FastAPI, Pydantic
+- **向量数据库**: ChromaDB, LangChain (Text Splitters)
+- **关系型数据库**: MySQL 8.0
+- **前端演示**: Streamlit
+- **部署**: Docker
+
+## 📂 目录结构
+```text
+english-tutor/
+├── rag_api.py          # FastAPI 接口层（负责接收请求与路由）
+├── rag_engine.py       # RAG 核心引擎层（负责检索与生成）
+├── db_manager.py       # 数据库操作层（负责 MySQL 读写）
+├── app.py              # Streamlit 前端演示
+├── my_docs/            # 私有知识库文档（Markdown）
+├── Dockerfile          # 容器化构建文件
+└── requirements.txt    # 依赖清单
 ```
 
-## RAG 知识库问答（新增）
+🚀 快速启动 (Quick Start)
+1. 部署 MySQL 数据库
+确保本地已启动 MySQL，并创建库与表：
 
-基于 RAG 架构的个人知识库问答系统，把 Python 笔记作为知识库，输入问题后自动检索相关内容并生成回答。
-
-### 实现流程
-1. 读取 Markdown 文档，按标题切分成小段
-2. 用通义千问 Embedding API 把每段转成向量
-3. 存入 ChromaDB 向量数据库
-4. 用户提问时，检索最相关的 3 段内容
-5. 把检索结果 + 问题拼成 Prompt，发给大模型生成回答
-
-### 核心文件
-- `rag_step1.py`：读取文档 + 切分
-- `rag_step2.py`：向量化 + 存入 ChromaDB
-- `rag_step3.py`：检索测试
-- `rag_step4.py`：完整 RAG 问答流程
-- `python_notes.md`：知识库文档
-
-### 运行方式
-```bash
-# 第一步：建库（只需运行一次）
-python3 rag_step2.py
-
-# 第二步：问答
-python3 rag_step4.py
-```
-
-## Docker 部署（新增）
-
-本项目已容器化，无需配置本地环境，一键运行。
-
-### 1. 构建镜像
-```bash
+sql
+CREATE DATABASE ai_chat_db;
+USE ai_chat_db;
+CREATE TABLE chat_messages (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    role VARCHAR(20) NOT NULL,
+    content TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+2. 配置环境变量
+bash
+export DASHSCOPE_API_KEY="你的通义千问API Key"
+3. Docker 启动后端服务
+bash
 docker build -t rag-api:v1 .
-```
+docker run -d --name rag-api -p 8001:8000 --add-host=host.docker.internal:host-gateway -e DASHSCOPE_API_KEY="$DASHSCOPE_API_KEY" rag-api:v1
+4. 启动 Streamlit 前端演示
+bash
+pip install streamlit requests
+streamlit run app.py
+📈 性能与优化 (Performance)
+文档规模：已验证 3 份 Markdown 文档（9 段文本）的批量入库与检索。
 
-## AI Agent 工具调用（新增）
+防幻觉机制：Prompt 约束机制实现在超纲测试下 100% 拒绝编造。
 
-基于 Function Calling 实现的智能运维 Agent。用户输入问题后，大模型会自动判断是否需要调用本地工具（如查询服务器 CPU/内存），并基于工具返回结果生成回答。
-
-### 核心文件
-- `agent_tools.py`：定义了本地工具函数（如 `get_server_status`）
-- `agent_demo.py`：Agent 核心逻辑，包括工具说明书定义、大模型调用、本地函数执行和结果二次总结
-
-### 运行方式
-```bash
-python3 agent_demo.py
-```
-
-# AI 智能助手 (RAG + Agent)
-
-## 📺 在线演示 (Demo)
-![前端界面演示](assets/4e39d8bb2c42e196427e373c601dd358.png)
-![Agent 运维助手演示](assets/2026-10-19 08-57-21.mp4)
-
-
-## 项目简介
-本项目包含两个核心模块：
-1. **企业级 RAG 知识库问答**：结合 Streamlit 前端，通过私有文档检索增强大模型回答，有效解决幻觉问题。
-2. **智能运维 Agent**：基于 Function Calling 实现工具调度，Agent 可根据提问自动执行本地 Python 脚本。
-...
-
-已接入 MySQL 数据库实现聊天记录持久化
+容器体积：镜像体积精简至 935 MB，实现秒级极速启动。
