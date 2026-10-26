@@ -1,84 +1,96 @@
 import os
 import json
 import dashscope
-import time
-from agent_tools import get_server_status
+from agent_tools import get_contract_by_name,check_risks_keywords
 
-# 从环境变量读取 Key
 dashscope.api_key = os.environ.get("DASHSCOPE_API_KEY")
 
-start = time.time()
-
-# 1. 定义“工具说明书”
-# 告诉大模型，我们有一个叫 get_server_status 的工具
+#1.定义工具说明书(JSON Schema)
 tools = [
     {
-        "type": "function",
-        "function": {
-            "name": "get_server_status",
-            "description": "获取当前服务器的CPU和内存使用率",
-            "parameters": {}  # 这个工具不需要传参数
+        "type":"function",
+        "function":{
+            "name":"get_contract_by_name",
+            "description":"根据客户姓名查询合同文本内容",
+            "parameters":{
+                "type":"object",
+                "properties":{"name":{"type":"string","description":"客户姓名"}},
+                "required":["name"]
+            }
+        }
+    },
+    {
+        "type":"function",
+        "function":{
+            "name":"check_risk_keywords",
+            "description":"检查合同文本中是否包含高风险/违规词汇",
+            "parameters":{
+                "type":"object",
+                "propreties":{"text":{"type":"string","description":"需要检查的合同文本"}},
+                "requied":["text"]
+            }
         }
     }
 ]
 
-# 2. 初始化对话历史
 messages = [
-    {"role": "system", "content": "你是一个智能运维助手，你可以调用工具来查询服务器状态。"},
-    {"role": "user", "content": "帮我看一下现在服务器的CPU和内存占用高不高？"}
+     {"role": "system", "content": "你是一个专业的企业法务风控助手。请审核客户合同，你需要先查询合同内容，再检查是否有风险词汇，最后生成一份审核报告。"},
+    {"role": "user", "content": "请帮我审核一下张三的合同，看看有没有风险。"}
 ]
 
-print("正在请求大模型...")
+#2.引入工程化机制:最大迭代次数(防止死循环)
+MAX_ITERATIONS = 5
+iteration = 0
 
-# 3. 第一次请求大模型
-response = dashscope.Generation.call(
-    model="qwen-plus",
-    messages=messages,
-    tools=tools  # 把说明书传给大模型
-)
-print("大模型原始返回:", response)
-# 4. 检查大模型是不是要调用工具
-# 注意：tool_calls 在 choices[0].message 里
-message = response.output["choices"][0]["message"]
+while iteration  <  MAX_ITERATIONS:
+    iteration += 1
+    print(f"\n--- 第{iteration}轮思考")
 
-if message.get("tool_calls"):
-    # 拿到大模型要求的工具名
-    tool_call = message["tool_calls"][0]
-    function_name = tool_call["function"]["name"]
-    
-    print(f"大模型决定调用工具: {function_name}")
-    
-       # 5. 本地执行工具函数 (加上异常处理)
-    if function_name == "get_server_status":
+    #请求大模型
+    response = dashscope.Generation.call(
+        model="qwen-plus",
+        messages=messages,
+        tools=tools
+    )
+
+    #拿到大模型的回答
+    message = response.output["choices"][0]["message"]
+    messages.append(message)#把模型的思考记录加入历史
+
+    #如果大模型没有调用工具,说明它思考完毕,给出了最终回答
+    if not message.get("tool_calls"):
+        print("\n=== 最终审核报告 ===")
+        print(message.get("content"))
+        break
+
+    #如果调用了工具,开始执行
+    for tool_call in message["tool_calls"]:
+        function_name = tool_call["function"]["name"]
+        arguments = json.loads(tool_call["function"]["arguments"])
+
+        print(f"大模型决定调用工具:{function_name},参数:{arguments}")
+
+        #3.引入工程化机制:Try-Except 异常捕获与降级
         try:
-            result = get_server_status()
-            print(f"工具执行结果: {result}")
+            if function_name == "get_contract_by_name":
+                result = get_contract_by_name(arguments["name"])
+            elif function_name == "check_risk_keyword":
+                result = check_risks_keywords(arguments["text"])
+            else:
+                result = "未知工具调用"
         except Exception as e:
-            # 如果工具挂了（比如服务器宕机、psutil报错）
-            result = f"工具执行失败，错误信息: {str(e)}"
-            print(result)
-        
-        # 6. 把工具执行的结果（或者是报错信息），作为一条新消息发给大模型
-        messages.append(message) 
-        messages.append({
-            "role": "tool",
-            "content": result,
-            "tool_call_id": tool_call["id"] 
-        })
-        
-        # 7. 第二次请求大模型，让它根据结果总结回答
-        print("正在请求大模型总结回答...")
-        final_response = dashscope.Generation.call(
-            model="qwen-plus",  # 记得还是用纯文本模型
-            messages=messages
-        )
-        
-        print("\n=== 最终回答 ===")
-        # 最终回答的文本在 output.text 里
-        print(final_response.output.text)
-else:
-    # 如果大模型没调用工具，直接回答了
-    print("\n=== 直接回答 ===")
-    print(message.get("content"))
+            #如果工具内容崩溃(比如数据库断连),优雅降级
+            result = f"工具执行失败,原因:{str(e)},请告诉用户系统繁忙,稍后重试."
+            print(f"❌{result}")
+        print(f"工具执行结果:{result}")
 
-print(f"总耗时: {time.time() - start:.2f} 秒")
+        #把工具执行结果塞回给大模型
+        messages.append({
+            "role":"tool",
+            "content":result,
+            "tool_call_id":tool_call["id"]
+        })
+
+#如果循环超过了最大次数
+if iteration >= MAX_ITERATIONS:
+    print("\n⚠️ 系统提示:Agent 思考次数过多,已触发熔断保护机制,强制终止.")
